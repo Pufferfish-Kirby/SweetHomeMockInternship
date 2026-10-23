@@ -750,8 +750,10 @@ public class FurnitureTable extends JTable implements View, Printable {
           return headerRendererLabel;
         }
       };
-    for (int columnIndex = 0, n = columnModel.getColumnCount(); columnIndex < n; columnIndex++) {
-      final TableColumn tableColumn = columnModel.getColumn(columnIndex);
+    List<TableColumn> printedColumns = columnModel instanceof FurnitureTableColumnModel
+        ? ((FurnitureTableColumnModel)columnModel).getPrintedColumns()
+        : Collections.list(columnModel.getColumns());
+    for (final TableColumn tableColumn : printedColumns) {
       // Create a printable column from existing table column
       TableColumn printableColumn = new TableColumn();
       printableColumn.setIdentifier(tableColumn.getIdentifier());
@@ -1008,9 +1010,11 @@ public class FurnitureTable extends JTable implements View, Printable {
    * Column table model used by this table.
    */
   private static class FurnitureTableColumnModel extends DefaultTableColumnModel {
+    private Home                                                    home;
     private Map<HomePieceOfFurniture.SortableProperty, TableColumn> availableColumns;
 
     public FurnitureTableColumnModel(Home home, UserPreferences preferences) {
+      this.home = home;
       createAvailableColumns(home, preferences);
       addHomeListener(home);
       addLanguageListener(preferences);
@@ -1118,9 +1122,24 @@ public class FurnitureTable extends JTable implements View, Printable {
     }
 
     /**
+     * Returns the columns to print: the displayed columns followed by the level column
+     * when home contains several levels, so that printed furniture of each level can be distinguished.
+     * Displayed columns aren't modified.
+     */
+    public List<TableColumn> getPrintedColumns() {
+      List<TableColumn> printedColumns = new ArrayList<TableColumn>(this.tableColumns);
+      TableColumn levelColumn = this.availableColumns.get(HomePieceOfFurniture.SortableProperty.LEVEL);
+      if (this.home.getLevels().size() > 1
+          && !printedColumns.contains(levelColumn)) {
+        printedColumns.add(levelColumn);
+      }
+      return printedColumns;
+    }
+
+    /**
      * Returns localized column names.
      */
-    private String getColumnName(HomePieceOfFurniture.SortableProperty property, 
+    private String getColumnName(HomePieceOfFurniture.SortableProperty property,
                                  UserPreferences preferences) {
       switch (property) {
         case CATALOG_ID :
